@@ -1806,3 +1806,138 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
         xblock_body["content_type"] = "LTI Consumer"
 
         return xblock_body
+
+
+
+
+    # def save(self):
+    #     custom_params = self.custom_parameters if self.custom_parameters else []
+
+    #     try:
+    #         # Get course and parent hierarchy to construct the LMS link
+    #         course_id = str(self.location.course_key)  # Course key
+
+    #         # Collect block IDs by traversing the parent hierarchy, stopping before the LTI block itself
+    #         block_ids = []
+    #         current_block = self
+
+    #         # Traverse the block hierarchy upwards and collect the block IDs, skipping the last one (self)
+    #         while current_block:
+    #             parent_block = self.runtime.get_parent(current_block)
+    #             if parent_block:
+    #                 block_ids.append(str(parent_block.location))  # Collect the parent block ID
+    #             current_block = parent_block
+
+    #         # Reverse the block IDs to construct the URL from course -> chapter -> sequential -> vertical
+    #         block_ids.reverse()
+
+    #         # Construct the LMS link by joining the block IDs
+    #         block_url_part = "/".join(block_ids)
+    #         base_url = "http://apps.local.edly.io:2000"
+    #         lms_link = f"{base_url}/learning/course/{course_id}/{block_url_part}"
+
+    #         log.info(f"LMS link for block: {lms_link}")
+    #     except Exception as e:
+    #         log.error(f"Failed to generate LMS link: {e}")
+    #         lms_link = ""  # Set as empty string if unable to fetch
+
+    #     # Add or update the 'launch_presentation_return_url' in custom_parameters
+    #     found = False
+    #     for param in custom_params:
+    #         if param.startswith('launch_presentation_return_url'):
+    #             found = True
+    #             break
+
+    #     if not found and lms_link:
+    #         custom_params.append(f'launch_presentation_return_url={lms_link}')
+    #         self.custom_parameters = custom_params
+    #         log.info(f"Updated custom_parameters: {custom_params}")
+
+    #     # Call the parent save method to save the block
+    #     super().save()
+
+
+
+
+# This function will save launch presentation url automatically while edit the studio lti edit page.
+
+
+
+    def save(self):
+    # Ensure that custom_parameters exist
+        custom_params = self.custom_parameters if self.custom_parameters else []
+
+        try:
+            # Get course and parent hierarchy to construct the LMS link
+            course_id = str(self.location.course_key)  # Course key
+
+            # Collect block IDs by traversing the parent hierarchy, and include the current block (self)
+            block_ids = []
+            current_block = self
+
+            # Traverse the block hierarchy upwards and collect the block IDs, including the current block itself
+            while current_block:
+                block_ids.append(str(current_block.location))  # Collect the current block ID (self and its parents)
+                parent_block = current_block.runtime.get_parent(current_block) if hasattr(current_block.runtime, 'get_parent') else None
+                current_block = parent_block
+
+            # Reverse the block IDs to construct the URL from course -> chapter -> sequential -> vertical -> self
+            block_ids.reverse()
+
+            # Construct the LMS link by joining the block IDs
+            block_url_part = "/".join(block_ids)
+            base_url = "http://apps.local.edly.io:2000"
+            lms_link = f"{base_url}/learning/course/{course_id}/{block_url_part}"
+
+            log.info(f"LMS link for block: {lms_link}")
+        except Exception as e:
+            log.error(f"Failed to generate LMS link: {e}")
+            lms_link = ""  # Set as empty string if unable to fetch
+
+        # Add or update the 'launch_presentation_return_url' in custom_parameters
+        self.custom_parameters = [
+            f'launch_presentation_return_url={lms_link}'
+        ] + [param for param in custom_params if not param.startswith('launch_presentation_return_url')]
+
+        log.info("Updated custom_parameters: %s", self.custom_parameters)
+
+        # Call the parent save method to save the block
+        super().save()
+
+    
+    # def save(self):
+    #     # Ensure that custom_parameters exist
+    #     custom_params = self.custom_parameters if self.custom_parameters else []
+
+    #     # Get course and block ID information to construct the return URL
+    #     course_id = str(self.location.course_key)  # Course key (e.g., 'course-v1:eeeee+eeeee+eeee')
+    #     block_id = str(self.location)  # Block ID (e.g., 'block-v1:eeeee+eeeee+eeee+type@lti_consumer+block@...')
+
+    #     # Base URL of your LMS
+    #     base_url = "http://apps.local.edly.io:2000"
+
+    #     # Construct the proper return URL in the desired format
+    #     # Note: Adjust this based on how your platform structures the URL paths for courses and blocks
+    #     full_url = f"{base_url}/learning/course/{course_id}/{block_id}"
+
+    #     log.info("Constructed Full Return URL: %s", full_url)
+
+    #     # Add or update the launch_presentation_return_url parameter
+    #     found = False
+    #     for param in custom_params:
+    #         if param.startswith('launch_presentation_return_url'):
+    #             found = True
+    #             break
+
+    #     if not found:
+    #         custom_params.append(f'launch_presentation_return_url={full_url}')
+    #         self.custom_parameters = custom_params
+    #         log.info("Updated custom_parameters: %s", custom_params)
+
+    #     # Call the parent save method to save the block
+    #     super().save()
+
+
+
+
+    
