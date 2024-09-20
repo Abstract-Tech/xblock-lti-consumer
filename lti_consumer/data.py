@@ -105,4 +105,4 @@ class Lti1p3LaunchData:
         default=None,
         validator=validators.optional((validators.instance_of(Lti1p3ProctoringLaunchData))),
     )
-    custom_parameters = field(default={})
+    custom_parameters = field(default={"launch_presentation_return_url"})

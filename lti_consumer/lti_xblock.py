@@ -1051,6 +1051,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
 
         # parsing custom parameters to dict
         custom_parameters = {}
+        custom_url_defined = False
         if isinstance(self.custom_parameters, list):
             for custom_parameter in self.custom_parameters:
                 try:
@@ -1063,6 +1064,10 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
                     raise LtiError(msg) from err
 
                 # LTI specs: 'custom_' should be prepended before each custom parameter, as pointed in link above.
+                if param_name == "launch_presentation_return_url":
+                    print("value is",param_value)
+                    custom_url_defined = True
+                    
                 if param_name not in LTI_PARAMETERS:
                     param_name = 'custom_' + param_name
 
@@ -1070,7 +1075,12 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
                     param_value = resolve_custom_parameter_template(self, param_value)
 
                 custom_parameters[param_name] = param_value
-
+        if not custom_url_defined:
+            print("hello we are is not defined defined")
+            from cms.djangoapps.contentstore.utils import get_lms_link_for_item
+            lms_link =  get_lms_link_for_item(self.location)
+            log.info(f"LMS link for block: {lms_link}")
+            custom_parameters["launch_presentation_return_url"] = lms_link
         custom_parameters['custom_component_display_name'] = str(self.display_name)
 
         if self.due:
@@ -1296,7 +1306,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
 
         if real_user_data['user_language']:
             lti_consumer.set_launch_presentation_locale(real_user_data['user_language'])
-
+        print("we are setting cus")
         lti_consumer.set_custom_parameters(self.prefixed_custom_parameters)
 
         for processor in self.get_parameter_processors():
@@ -1318,6 +1328,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
             'launch_url': lti_consumer.lti_launch_url,
         }
         track_event('xblock.launch_request', event)
+        log.info("123456 heeeey")
 
         loader = ResourceLoader(__name__)
         context = self._get_context_for_template()
@@ -1885,11 +1896,10 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
             block_ids.reverse()
 
             # Construct the LMS link by joining the block IDs
-            block_url_part = "/".join(block_ids)
-            base_url = "http://apps.local.edly.io:2000"
-            lms_link = f"{base_url}/learning/course/{course_id}/{block_url_part}"
-
-            log.info(f"LMS link for block: {lms_link}")
+           # block_url_part = "/".join(block_ids)
+            #scheme = "https" if settings.HTTPS == 'on' else "http"
+            #base_url = f"{scheme}//{settings.MFE_CONFIG.get("BASE_URL")}"
+            #lms_link = f"{base_url}/learning/course/{course_id}/{block_url_part}"
         except Exception as e:
             log.error(f"Failed to generate LMS link: {e}")
             lms_link = ""  # Set as empty string if unable to fetch
