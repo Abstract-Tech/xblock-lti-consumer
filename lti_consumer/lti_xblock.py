@@ -1030,6 +1030,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
 
         # parsing custom parameters to dict
         custom_parameters = {}
+        custom_url_defined = False
         if isinstance(self.custom_parameters, list):
             for custom_parameter in self.custom_parameters:
                 try:
@@ -1044,6 +1045,8 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
                 # LTI specs: 'custom_' should be prepended before each custom parameter, as pointed in link above.
                 if param_name not in LTI_PARAMETERS:
                     param_name = 'custom_' + param_name
+                if param_name == "launch_presentation_return_url":
+                    custom_url_defined = True
 
                 if (param_value.startswith(CUSTOM_PARAMETER_TEMPLATE_TAGS[0]) and
                         param_value.endswith(CUSTOM_PARAMETER_TEMPLATE_TAGS[1])):
@@ -1052,6 +1055,13 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
                 custom_parameters[param_name] = param_value
 
         custom_parameters['custom_component_display_name'] = str(self.display_name)
+        if not custom_url_defined:
+            print("hello we are is not defined defined")
+            from cms.djangoapps.contentstore.utils import get_lms_link_for_item
+            lms_link =  get_lms_link_for_item(self.location)
+            log.info(f"LMS link for block: https:{lms_link}")
+            custom_parameters["launch_presentation_return_url"] = f"https:{lms_link}"
+
 
         if self.due:
             custom_parameters.update({
