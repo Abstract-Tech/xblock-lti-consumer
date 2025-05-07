@@ -73,7 +73,8 @@ class LtiConsumer1p3:
         self.lti_claim_launch_presentation = None
         self.lti_claim_context = None
         self.lti_claim_custom_parameters = None
-
+        log.info("[LTI Consumer Init] Initializing LTI Consumer with Client ID: %s", client_id)
+        log.debug("[LTI Consumer Init] Configuration - OIDC URL: %s, Launch URL: %s", lti_oidc_url, lti_launch_url)
         # Extra claims - used by LTI Advantage
         self.extra_claims = {}
 
@@ -134,6 +135,8 @@ class LtiConsumer1p3:
             "login_hint": login_hint,
             "lti_message_hint": launch_data_key,
         }
+        log.info("[LTI Consumer] Preparing Preflight URL for user_id: %s", launch_data.user_id)
+        log.debug("[LTI Consumer] Preflight URL generated: %s", oidc_url)
 
         return oidc_url + urlencode(parameters)
 
@@ -388,7 +391,9 @@ class LtiConsumer1p3:
         the configuration and JTW encode the message using the provided key.
         """
         # Validate preflight response
+        log.info("[LTI Consumer] Generating LTI launch request...")
         self._validate_preflight_response(preflight_response)
+        log.debug("[LTI Consumer] Preflight response validated successfully.")
 
         # Get LTI Launch Message
         lti_launch_message = self.get_lti_launch_message()
@@ -397,6 +402,8 @@ class LtiConsumer1p3:
         lti_launch_message.update({
             "nonce": preflight_response.get("nonce")
         })
+        log.debug("[LTI Consumer] LTI launch message created with nonce: %s", preflight_response.get("nonce"))
+        log.info("[LTI Consumer] Launch request generated successfully for state: %s", preflight_response.get("state"))
 
         return {
             "state": preflight_response.get("state"),
@@ -410,6 +417,7 @@ class LtiConsumer1p3:
         """
         Export Public JWK
         """
+        log.debug("[LTI Consumer] Public Keyset fetched successfully.")
         return self.key_handler.get_public_jwk()
 
     def _check_if_scope_is_valid(self, scope):
@@ -446,6 +454,7 @@ class LtiConsumer1p3:
             supported LTI Scopes from this tool.
         """
         # Check if all required claims are present
+        log.info("[LTI Consumer] Generating access token for client_id: %s", token_request_data['client_id'])
         for required_claim in LTI_1P3_ACCESS_TOKEN_REQUIRED_CLAIMS:
             if required_claim not in token_request_data.keys():
                 error_msg = (
@@ -487,6 +496,8 @@ class LtiConsumer1p3:
 
         # This response is compliant with RFC 6749
         # https://tools.ietf.org/html/rfc6749#section-4.4.3
+
+        log.info("[LTI Consumer] Access token generated successfully for client_id: %s", token_request_data['client_id'])
         return {
             "access_token": self.key_handler.encode_and_sign(
                 {
@@ -511,6 +522,7 @@ class LtiConsumer1p3:
 
         :param response: the preflight response to be validated
         """
+        log.info("[LTI Consumer] Validating preflight response...")
         try:
             redirect_uri = response.get("redirect_uri")
             assert response.get("nonce")
@@ -518,6 +530,7 @@ class LtiConsumer1p3:
             assert redirect_uri
             assert redirect_uri in self.redirect_uris
             assert response.get("client_id") == self.client_id
+            log.debug("[LTI Consumer] Preflight response validation passed for redirect_uri: %s", response.get("redirect_uri"))
         except AssertionError as err:
             raise exceptions.PreflightRequestValidationFailure() from err
 
@@ -539,6 +552,8 @@ class LtiConsumer1p3:
         # token validity).
         if allowed_scopes:
             return any(scope in allowed_scopes for scope in token_scopes)
+        
+        log.debug("[LTI Consumer] Token scopes validated successfully.")
 
         return True
 
@@ -576,6 +591,7 @@ class LtiAdvantageConsumer(LtiConsumer1p3):
 
         # LTI NRPS Variables
         self.nrps = None
+        
 
     @property
     def lti_ags(self):

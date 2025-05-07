@@ -1125,6 +1125,8 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
         # Open edX LMS/Studio environments.
         # pylint: disable=import-outside-toplevel
         from lti_consumer.api import config_id_for_block, get_lti_consumer
+        log.info("[LTI Consumer] Initializing LTI Consumer instance for block: %s", self.scope_ids.usage_id)
+        log.debug("[LTI Consumer] Configuration Details: Launch URL: %s, Version: %s", self.launch_url, self.lti_version)
 
         return get_lti_consumer(config_id_for_block(self))
 
@@ -1332,6 +1334,13 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
         loader = ResourceLoader(__name__)
         context = self._get_context_for_template()
         context.update({'lti_parameters': lti_parameters})
+
+        log.info("[LTI Launch Handler] Launching LTI tool for user_id: %s", self.lms_user_id)
+        log.debug("[LTI Launch Handler] Extracting user data for LTI launch...")
+        log.debug("[LTI Launch Handler] User data set: %s", real_user_data)
+        log.debug("[LTI Launch Handler] Generating LTI launch request for resource_link_id: %s", self.resource_link_id)
+
+
         template = loader.render_django_template('/templates/html/lti_launch.html', context)
         return Response(template, content_type='text/html')
 
@@ -1357,6 +1366,9 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
         # Runtime import because this can only be run in the LMS/Studio Django
         # environments. Importing the views on the top level will cause RuntimeErorr
         from lti_consumer.plugin.views import access_token_endpoint  # pylint: disable=import-outside-toplevel
+
+        log.info("[LTI Access Token] Generating access token for LTI 1.3 launch")
+        log.debug("[LTI Access Token] Calling access_token_endpoint with usage_id: %s", str(self.scope_ids.usage_id))
         return access_token_endpoint(request, usage_id=str(self.scope_ids.usage_id))
 
     @XBlock.handler
@@ -1613,6 +1625,9 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
                 value = resolve_custom_parameter_template(self, value)
 
             custom_parameters.update({key: value})
+        
+        log.info("[LTI Custom Params] Fetching custom LTI parameters")
+        log.debug("[LTI Custom Params] Default parameters fetched: %s", custom_parameters)
 
         return custom_parameters
 
@@ -1705,6 +1720,9 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
         if consumer and self.lti_version == 'lti_1p3' and self.config_type in ('database', 'external'):
             lti_1p3_launch_url = consumer.launch_url
 
+        log.info("[LTI 1.3 Launch URL] Fetching LTI 1.3 launch URL for consumer: %s", consumer)
+        log.debug("[LTI 1.3 Launch URL] Launch URL resolved to: %s", lti_1p3_launch_url)
+        
         return lti_1p3_launch_url
 
     def _get_context_for_template(self):
