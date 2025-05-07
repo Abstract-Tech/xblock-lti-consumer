@@ -1320,7 +1320,9 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
                 log.exception('Error in XBlock LTI parameter processor "%s"', processor)
 
         lti_parameters = lti_consumer.generate_launch_request(self.resource_link_id)
-
+        log.info("LTI Launch: Sending hardcoded user info: username=%s, full_name=%s, email=%s", username, full_name, email)
+        log.info("LTI Launch Parameters: %s", lti_parameters)
+        log.info("LTI Launch URL: %s", lti_consumer.lti_launch_url)
         # emit tracking event
         event = {
             'lti_version': lti_parameters.get('lti_version'),
@@ -1762,6 +1764,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
             'modal_width': self.modal_width,
             'accept_grades_past_due': self.accept_grades_past_due,
             'lti_version': self.lti_version,
+            'is_author_mode': getattr(self.runtime, 'is_author_mode', False),
         }
 
     def _get_modal_position_offset(self, viewport_percentage):
