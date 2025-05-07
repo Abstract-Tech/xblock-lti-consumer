@@ -25,6 +25,9 @@ from .key_handlers import ToolKeyHandler, PlatformKeyHandler
 from .ags import LtiAgs
 from .deep_linking import LtiDeepLinking
 from .nprs import LtiNrps
+import logging
+from urllib.parse import urlencode
+from lti_consumer.utils import cache_lti_1p3_launch_data
 
 log = logging.getLogger(__name__)
 
@@ -73,8 +76,7 @@ class LtiConsumer1p3:
         self.lti_claim_launch_presentation = None
         self.lti_claim_context = None
         self.lti_claim_custom_parameters = None
-        log.info("[LTI Consumer Init] Initializing LTI Consumer with Client ID: %s", client_id)
-        log.debug("[LTI Consumer Init] Configuration - OIDC URL: %s, Launch URL: %s", lti_oidc_url, lti_launch_url)
+
         # Extra claims - used by LTI Advantage
         self.extra_claims = {}
 
@@ -107,38 +109,42 @@ class LtiConsumer1p3:
         return list(lti_user_roles)
 
     @function_trace('lti_consumer.lti_1p3.consumer.prepare_preflight_url')
-    def prepare_preflight_url(
-            self,
-            launch_data,
-    ):
+    def prepare_preflight_url(self, launch_data):
         """
-        Generates OIDC url with parameters
+        Generates OIDC url with parameters.
+        This is enhanced to ensure correct flow to UbiCast /login/ URL before launch.
         """
-        user_id = launch_data.external_user_id if launch_data.external_user_id else launch_data.user_id
+        log.info("Preparing OIDC Preflight URL for UbiCast LTI 1.3 Launch")
+    
+        try:
+            user_id = launch_data.external_user_id if launch_data.external_user_id else launch_data.user_id
+            launch_data_key = cache_lti_1p3_launch_data(launch_data)
+            
+            log.debug(f"User ID resolved for OIDC: {user_id}")
+            log.debug(f"Launch Data Key cached with ID: {launch_data_key}")
 
-        # Set the launch_data in the cache. An LTI 1.3 launch involves two "legs" - the third party initiated
-        # login request (the preflight request) and the actual launch -, and this information must be shared between
-        # the two requests. A simple example is the intended LTI launch message of the LTI launch. This value is
-        # known at the time that preflight request is made, but it is not accessible when the tool responds to the
-        # preflight request and the platform must craft a launch request. This library stores the launch_data in the
-        # cache and includes the cache key as the lti_message_hint query or form parameter to retrieve it later.
-        launch_data_key = cache_lti_1p3_launch_data(launch_data)
+            oidc_url = self.oidc_url + "?"
+            
+            login_hint = user_id
+            parameters = {
+                "iss": self.iss,
+                "client_id": self.client_id,
+                "lti_deployment_id": self.deployment_id,
+                "target_link_uri": self.launch_url,
+                "login_hint": login_hint,
+                "lti_message_hint": launch_data_key,
+                "prompt": "none"
+            }
 
-        oidc_url = self.oidc_url + "?"
+            log.debug(f"OIDC URL Parameters: {parameters}")
+            final_url = oidc_url + urlencode(parameters)
+            log.info(f"Generated OIDC URL: {final_url}")
 
-        login_hint = user_id
-        parameters = {
-            "iss": self.iss,
-            "client_id": self.client_id,
-            "lti_deployment_id": self.deployment_id,
-            "target_link_uri": self.launch_url,
-            "login_hint": login_hint,
-            "lti_message_hint": launch_data_key,
-        }
-        log.info("[LTI Consumer] Preparing Preflight URL for user_id: %s", launch_data.user_id)
-        log.debug("[LTI Consumer] Preflight URL generated: %s", oidc_url)
+            return final_url
+        except Exception as e:
+            log.error(f"Failed to generate OIDC Preflight URL: {str(e)}")
+            raise e
 
-        return oidc_url + urlencode(parameters)
 
     def set_user_data(
             self,
@@ -181,36 +187,30 @@ class LtiConsumer1p3:
                 "preferred_username": preferred_username,
             })
 
-    def set_resource_link_claim(
-        self,
-        resource_link_id,
-        description=None,
-        title=None,
-    ):
+    def set_resource_link_claim(self, resource_link_id, description=None, title=None):
         """
         Set resource_link claim. The resource link must be stable and unique to each deployment_id. This value MUST
-        change if the link is copied or exported from one system or context and imported into another system or context
-
-        https://www.imsglobal.org/spec/lti/v1p3#resource-link-claim
-
-        Arguments:
-        * id (string): opaque, unique value identifying the placement of an LTI resource link
-        * description (string): description for the placement of an LTI resource link
-        * title (string): title for the placement of an LTI resource link
+        change if the link is copied or exported from one system or context and imported into another system or context.
+        Enhanced to ensure proper setup for UbiCast.
         """
-        resource_link_claim_data = {
-            "id": resource_link_id,
-        }
+        log.info("Setting up Resource Link Claim for UbiCast LTI 1.3 Launch")
 
-        if description:
-            resource_link_claim_data["description"] = description
+        try:
+            resource_link_claim_data = {
+                "id": resource_link_id,
+                "title": title if title else "UbiCast Resource",
+                "description": description if description else "UbiCast LTI Resource"
+            }
 
-        if title:
-            resource_link_claim_data["title"] = title
+            log.debug(f"Resource Link Claim Data: {resource_link_claim_data}")
+            self.lti_claim_resource_link = {
+                "https://purl.imsglobal.org/spec/lti/claim/resource_link": resource_link_claim_data
+            }
+            log.info("Resource Link Claim set successfully")
+        except Exception as e:
+            log.error(f"Failed to set Resource Link Claim: {str(e)}")
+            raise e
 
-        self.lti_claim_resource_link = {
-            "https://purl.imsglobal.org/spec/lti/claim/resource_link": resource_link_claim_data
-        }
 
     def set_launch_presentation_claim(
             self,
@@ -380,44 +380,45 @@ class LtiConsumer1p3:
 
         return lti_message
 
-    def generate_launch_request(
-            self,
-            preflight_response,
-    ):
+    def generate_launch_request(self, preflight_response):
         """
-        Build LTI message from class parameters
-
-        This will add all required parameters from the LTI 1.3 spec and any additional ones set in
-        the configuration and JTW encode the message using the provided key.
+        Builds LTI message from class parameters.
+        This is modified to ensure proper flow with UbiCast /login/ → /launch/
         """
-        # Validate preflight response
-        log.info("[LTI Consumer] Generating LTI launch request...")
-        self._validate_preflight_response(preflight_response)
-        log.debug("[LTI Consumer] Preflight response validated successfully.")
+        log.info("Starting LTI 1.3 Launch Request Generation")
+        
+        try:
+            # Validate preflight response
+            self._validate_preflight_response(preflight_response)
+            log.debug(f"Preflight response validated successfully: {preflight_response}")
 
-        # Get LTI Launch Message
-        lti_launch_message = self.get_lti_launch_message()
+            # Fetch LTI Launch Message
+            lti_launch_message = self.get_lti_launch_message()
+            log.debug(f"LTI Launch Message generated: {lti_launch_message}")
 
-        # Nonce from OIDC preflight launch request
-        lti_launch_message.update({
-            "nonce": preflight_response.get("nonce")
-        })
-        log.debug("[LTI Consumer] LTI launch message created with nonce: %s", preflight_response.get("nonce"))
-        log.info("[LTI Consumer] Launch request generated successfully for state: %s", preflight_response.get("state"))
+            # Nonce from OIDC preflight launch request
+            lti_launch_message.update({
+                "nonce": preflight_response.get("nonce")
+            })
+            
+            log.info("LTI Launch Request generated successfully")
+            return {
+                "state": preflight_response.get("state"),
+                "id_token": self.key_handler.encode_and_sign(
+                    message=lti_launch_message,
+                    expiration=3600
+                )
+            }
+        except Exception as e:
+            log.error(f"Failed to generate LTI Launch Request: {str(e)}")
+            raise e
 
-        return {
-            "state": preflight_response.get("state"),
-            "id_token": self.key_handler.encode_and_sign(
-                message=lti_launch_message,
-                expiration=3600
-            )
-        }
+
 
     def get_public_keyset(self):
         """
         Export Public JWK
         """
-        log.debug("[LTI Consumer] Public Keyset fetched successfully.")
         return self.key_handler.get_public_jwk()
 
     def _check_if_scope_is_valid(self, scope):
@@ -454,7 +455,6 @@ class LtiConsumer1p3:
             supported LTI Scopes from this tool.
         """
         # Check if all required claims are present
-        log.info("[LTI Consumer] Generating access token for client_id: %s", token_request_data['client_id'])
         for required_claim in LTI_1P3_ACCESS_TOKEN_REQUIRED_CLAIMS:
             if required_claim not in token_request_data.keys():
                 error_msg = (
@@ -496,8 +496,6 @@ class LtiConsumer1p3:
 
         # This response is compliant with RFC 6749
         # https://tools.ietf.org/html/rfc6749#section-4.4.3
-
-        log.info("[LTI Consumer] Access token generated successfully for client_id: %s", token_request_data['client_id'])
         return {
             "access_token": self.key_handler.encode_and_sign(
                 {
@@ -522,7 +520,6 @@ class LtiConsumer1p3:
 
         :param response: the preflight response to be validated
         """
-        log.info("[LTI Consumer] Validating preflight response...")
         try:
             redirect_uri = response.get("redirect_uri")
             assert response.get("nonce")
@@ -530,7 +527,6 @@ class LtiConsumer1p3:
             assert redirect_uri
             assert redirect_uri in self.redirect_uris
             assert response.get("client_id") == self.client_id
-            log.debug("[LTI Consumer] Preflight response validation passed for redirect_uri: %s", response.get("redirect_uri"))
         except AssertionError as err:
             raise exceptions.PreflightRequestValidationFailure() from err
 
@@ -552,8 +548,6 @@ class LtiConsumer1p3:
         # token validity).
         if allowed_scopes:
             return any(scope in allowed_scopes for scope in token_scopes)
-        
-        log.debug("[LTI Consumer] Token scopes validated successfully.")
 
         return True
 
@@ -591,7 +585,6 @@ class LtiAdvantageConsumer(LtiConsumer1p3):
 
         # LTI NRPS Variables
         self.nrps = None
-        
 
     @property
     def lti_ags(self):
