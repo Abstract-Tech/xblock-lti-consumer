@@ -382,30 +382,31 @@ class LtiConsumer1p3:
 
     def generate_launch_request(self, preflight_response):
         """
-        Build LTI message for Deep linking launches.
-    
-        Overrides method from LtiConsumer1p3 to allow handling LTI Deep linking messages
+        Build LTI message for Deep Linking launches.
+
+        Overrides method from LtiConsumer1p3 to handle both Deep Linking and standard LTI 1.3 launches.
         """
         lti_message_hint = preflight_response.get('lti_message_hint')
         launch_data = get_data_from_cache(lti_message_hint)
-    
+
         if not launch_data:
-            log.warning(f'There was a cache miss during an LTI 1.3 launch when using the cache_key {lti_message_hint}.')
-    
-        # Check if Deep Linking is enabled and that this is a Deep Link Launch
-        if self.dl and launch_data.message_type == "LtiDeepLinkingRequest":
+            log.warning(
+                f"[LTI 1.3] Cache miss during LTI launch for cache_key: {lti_message_hint}"
+            )
+
+        # Deep Linking Launch
+        if self.dl and getattr(launch_data, 'message_type', None) == "LtiDeepLinkingRequest":
             try:
-                log.info("Starting Deep Linking LTI 1.3 Launch Request Generation")
-    
-                # Validate preflight response
+                log.info("[LTI 1.3] Starting Deep Linking launch request generation")
+
                 self._validate_preflight_response(preflight_response)
-                log.debug(f"Preflight response validated successfully: {preflight_response}")
-    
-                # Build the base LTI launch message
+                log.debug(f"[LTI 1.3] Preflight response validated: {preflight_response}")
+
+                # Build Deep Linking launch message
                 lti_launch_message = self.get_lti_launch_message(include_extra_claims=False)
-                log.debug(f"LTI Launch Message base: {lti_launch_message}")
-    
-                # Required Deep Linking Claims
+                log.debug(f"[LTI 1.3] Base launch message: {lti_launch_message}")
+
+                # Required Deep Linking claims
                 lti_launch_message.update({
                     "https://purl.imsglobal.org/spec/lti/claim/message_type": "LtiDeepLinkingRequest",
                     "https://purl.imsglobal.org/spec/lti/claim/version": "1.3.0",
@@ -414,12 +415,12 @@ class LtiConsumer1p3:
                     "nonce": preflight_response.get("nonce"),
                     "https://purl.imsglobal.org/spec/lti-dl/claim/data": preflight_response.get("data", "")
                 })
-    
-                # Add Deep Linking launch claim structure
+
+                # Add any tool-provided deep linking claims
                 lti_launch_message.update(self.dl.get_lti_deep_linking_launch_claim())
-    
-                log.info("Deep Linking LTI Launch Request generated successfully")
-    
+
+                log.info("[LTI 1.3] Deep Linking launch request generated successfully")
+
                 return {
                     "state": preflight_response.get("state"),
                     "id_token": self.key_handler.encode_and_sign(
@@ -427,12 +428,28 @@ class LtiConsumer1p3:
                         expiration=3600
                     )
                 }
+
             except Exception as e:
-                log.error(f"Deep Linking launch request failed: {str(e)}")
-                raise e
-    
-        # Fallback to standard launch if not deep linking
-        return super().generate_launch_request(preflight_response)
+                log.error(f"[LTI 1.3] Deep Linking launch request failed: {str(e)}")
+                raise
+
+        # Fallback to standard LTI 1.3 launch
+        log.info("[LTI 1.3] Falling back to standard launch flow")
+
+        self._validate_preflight_response(preflight_response)
+
+        lti_launch_message = self.get_lti_launch_message()
+        lti_launch_message.update({
+            "nonce": preflight_response.get("nonce")
+        })
+
+        return {
+            "state": preflight_response.get("state"),
+            "id_token": self.key_handler.encode_and_sign(
+                message=lti_launch_message,
+                expiration=3600
+            )
+        }
 
 
 
