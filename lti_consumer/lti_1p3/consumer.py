@@ -382,36 +382,58 @@ class LtiConsumer1p3:
 
     def generate_launch_request(self, preflight_response):
         """
-        Builds LTI message from class parameters.
-        This is modified to ensure proper flow with UbiCast /login/ → /launch/
+        Build LTI message for Deep linking launches.
+    
+        Overrides method from LtiConsumer1p3 to allow handling LTI Deep linking messages
         """
-        log.info("Starting LTI 1.3 Launch Request Generation")
-        
-        try:
-            # Validate preflight response
-            self._validate_preflight_response(preflight_response)
-            log.debug(f"Preflight response validated successfully: {preflight_response}")
+        lti_message_hint = preflight_response.get('lti_message_hint')
+        launch_data = get_data_from_cache(lti_message_hint)
+    
+        if not launch_data:
+            log.warning(f'There was a cache miss during an LTI 1.3 launch when using the cache_key {lti_message_hint}.')
+    
+        # Check if Deep Linking is enabled and that this is a Deep Link Launch
+        if self.dl and launch_data.message_type == "LtiDeepLinkingRequest":
+            try:
+                log.info("Starting Deep Linking LTI 1.3 Launch Request Generation")
+    
+                # Validate preflight response
+                self._validate_preflight_response(preflight_response)
+                log.debug(f"Preflight response validated successfully: {preflight_response}")
+    
+                # Build the base LTI launch message
+                lti_launch_message = self.get_lti_launch_message(include_extra_claims=False)
+                log.debug(f"LTI Launch Message base: {lti_launch_message}")
+    
+                # Required Deep Linking Claims
+                lti_launch_message.update({
+                    "https://purl.imsglobal.org/spec/lti/claim/message_type": "LtiDeepLinkingRequest",
+                    "https://purl.imsglobal.org/spec/lti/claim/version": "1.3.0",
+                    "https://purl.imsglobal.org/spec/lti/claim/deployment_id": self.deployment_id,
+                    "https://purl.imsglobal.org/spec/lti/claim/target_link_uri": self.launch_url,
+                    "nonce": preflight_response.get("nonce"),
+                    "https://purl.imsglobal.org/spec/lti-dl/claim/data": preflight_response.get("data", "")
+                })
+    
+                # Add Deep Linking launch claim structure
+                lti_launch_message.update(self.dl.get_lti_deep_linking_launch_claim())
+    
+                log.info("Deep Linking LTI Launch Request generated successfully")
+    
+                return {
+                    "state": preflight_response.get("state"),
+                    "id_token": self.key_handler.encode_and_sign(
+                        message=lti_launch_message,
+                        expiration=3600
+                    )
+                }
+            except Exception as e:
+                log.error(f"Deep Linking launch request failed: {str(e)}")
+                raise e
+    
+        # Fallback to standard launch if not deep linking
+        return super().generate_launch_request(preflight_response)
 
-            # Fetch LTI Launch Message
-            lti_launch_message = self.get_lti_launch_message()
-            log.debug(f"LTI Launch Message generated: {lti_launch_message}")
-
-            # Nonce from OIDC preflight launch request
-            lti_launch_message.update({
-                "nonce": preflight_response.get("nonce")
-            })
-            
-            log.info("LTI Launch Request generated successfully")
-            return {
-                "state": preflight_response.get("state"),
-                "id_token": self.key_handler.encode_and_sign(
-                    message=lti_launch_message,
-                    expiration=3600
-                )
-            }
-        except Exception as e:
-            log.error(f"Failed to generate LTI Launch Request: {str(e)}")
-            raise e
 
 
 
