@@ -1779,6 +1779,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
             'modal_width': self.modal_width,
             'accept_grades_past_due': self.accept_grades_past_due,
             'lti_version': self.lti_version,
+            'is_author_mode': getattr(self.runtime, 'is_author_mode', False),
         }
 
     def _get_modal_position_offset(self, viewport_percentage):
