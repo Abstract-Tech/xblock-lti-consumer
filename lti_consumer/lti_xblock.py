@@ -1037,6 +1037,23 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
         """
         return self.runtime.handler_url(self, "result_service_handler", thirdparty=True).rstrip('/?')
 
+    def _lms_return_url(self):
+        """
+        Build a safe LMS return URL without depending on Studio code.
+        """
+        from urllib.parse import urljoin
+        from django.conf import settings
+        from django.urls import reverse
+
+        course_id = str(self.scope_ids.usage_id.context_key)
+        usage_id = str(self.scope_ids.usage_id)  # no quoting
+
+        # Studio uses 'jump_to', not 'jump_to_id'
+        path = reverse('jump_to', args=[course_id, usage_id])
+
+        base = getattr(settings, 'LMS_ROOT_URL', f"https://{settings.LMS_BASE}")
+        return urljoin(base, path)
+
     @property
     def prefixed_custom_parameters(self):
         """
@@ -1069,7 +1086,6 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
                     param_name = 'custom_' + param_name
 
                 if param_name == "launch_presentation_return_url":
-                    print("value is",param_value)
                     custom_url_defined = True
 
                 if CUSTOM_PARAMETER_TEMPLATE_REGEX.match(param_value):
@@ -1080,11 +1096,10 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
         custom_parameters['custom_component_display_name'] = str(self.display_name)
 
         if not custom_url_defined:
-            print("hello we are is not defined defined")
-            from cms.djangoapps.contentstore.utils import get_lms_link_for_item
-            lms_link =  get_lms_link_for_item(self.location)
-            log.info(f"LMS link for block: https:{lms_link}")
-            custom_parameters["launch_presentation_return_url"] = f"https:{lms_link}"
+            # replaced cms import with safe LMS URL builder
+            return_url = self._lms_return_url()
+            log.info("LMS return URL for block %s: %s", self.scope_ids.usage_id, return_url)
+            custom_parameters["launch_presentation_return_url"] = return_url
 
         if getattr(self, 'due', None):
             custom_parameters.update({
