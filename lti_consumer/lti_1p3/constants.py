@@ -27,10 +27,10 @@ LTI_1P3_ROLE_MAP = {
         'http://purl.imsglobal.org/vocab/lis/v2/institution/person#Instructor',
     ],
     'student': [
-        'http://purl.imsglobal.org/vocab/lis/v2/institution/person#Student'
+        'http://purl.imsglobal.org/vocab/lis/v2/membership#Learner'
     ],
     'guest': [
-        'http://purl.imsglobal.org/vocab/lis/v2/institution/person#Student'
+        'http://purl.imsglobal.org/vocab/lis/v2/membership#Learner'
     ],
 }
 

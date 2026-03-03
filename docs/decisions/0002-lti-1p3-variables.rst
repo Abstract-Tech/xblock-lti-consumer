@@ -55,7 +55,7 @@ The mappings from Open edX roles are shown in the table below:
      - Empty
      - Guests users are not logged in, they shouldn't be able to access LTI content.
    * - student
-     - 'http://purl.imsglobal.org/vocab/lis/v2/institution/person#Student'
+     - 'http://purl.imsglobal.org/vocab/lis/v2/membership#Learner'
      - Students only have permission to view and interact with the LTI content.
    * - instructor
      - 'http://purl.imsglobal.org/vocab/lis/v2/institution/person#Instructor'
