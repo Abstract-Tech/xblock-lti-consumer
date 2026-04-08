@@ -1902,6 +1902,7 @@ class TestLtiConsumer1p3XBlock(TestCase):
             "message_type": "LtiResourceLinkRequest",
             "context_id": course_key,
             "context_type": ["course_offering"],
+            "resource_link_title": self.xblock.display_name,
             "context_title": "context_title",
             "context_label": course_key,
             'custom_parameters': {},

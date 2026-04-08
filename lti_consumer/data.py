@@ -75,6 +75,8 @@ class Lti1p3LaunchData:
         the context. It is required if any of the context properties are provided.
     * context_type (optional): The type property of the context claim. It is a list of some combination of the following
         valid context_types: group, course_offering, course_section, or course_template.
+    * resource_link_title (optional): The title property of the resource_link claim. It should be a short,
+        descriptive name for the launched assignment/resource link.
     * context_title (optional): The title proerty of the context claim. It is a short, descriptive name for the context.
     * context_label (optional): The label property of the context claim. It is a full, descriptive name for the context.
     * deep_linking_context_item_id (optional): The database id of the LtiDlContentItem that should be used for the LTI
@@ -98,6 +100,7 @@ class Lti1p3LaunchData:
     message_type = field(default="LtiResourceLinkRequest")
     context_id = field(default=None)
     context_type = field(default=None)
+    resource_link_title = field(default=None)
     context_title = field(default=None)
     context_label = field(default=None)
     deep_linking_content_item_id = field(default=None)

@@ -252,7 +252,10 @@ def launch_gate_endpoint(request, suffix=None):  # pylint: disable=unused-argume
         )
 
         # Set resource_link claim.
-        lti_consumer.set_resource_link_claim(launch_data.resource_link_id)
+        lti_consumer.set_resource_link_claim(
+            launch_data.resource_link_id,
+            title=getattr(launch_data, "resource_link_title", None),
+        )
 
         # Set launch_presentation claim.
         lti_consumer.set_launch_presentation_claim(

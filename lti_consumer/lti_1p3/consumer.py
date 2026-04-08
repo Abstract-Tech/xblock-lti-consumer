@@ -197,13 +197,11 @@ class LtiConsumer1p3:
         """
         resource_link_claim_data = {
             "id": resource_link_id,
+            "title": title or "",
         }
 
         if description:
             resource_link_claim_data["description"] = description
-
-        if title:
-            resource_link_claim_data["title"] = title
 
         self.lti_claim_resource_link = {
             "https://purl.imsglobal.org/spec/lti/claim/resource_link": resource_link_claim_data

@@ -452,6 +452,7 @@ class TestLti1p3Consumer(TestCase):
             {
                 "https://purl.imsglobal.org/spec/lti/claim/resource_link": {
                     "id": "id",
+                    "title": "",
                 }
             }
         ),
@@ -552,7 +553,7 @@ class TestLti1p3Consumer(TestCase):
 
         expected_data = {
             'guid': str(uuid.uuid5(uuid.NAMESPACE_DNS, settings.PLATFORM_NAME)),
-            'name': settings.PLATFORM_NAME
+            'name': settings.PLATFORM_NAME,
         }
         self.assertEqual(
             decoded["https://purl.imsglobal.org/spec/lti/claim/tool_platform"],

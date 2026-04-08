@@ -1677,6 +1677,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
             launch_presentation_document_target="iframe",
             context_id=course_key,
             context_type=["course_offering"],
+            resource_link_title=self.display_name,
             context_title=self.get_context_title(),
             context_label=course_key,
             custom_parameters=self.get_lti_1p3_custom_parameters(),
