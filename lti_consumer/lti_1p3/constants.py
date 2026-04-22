@@ -22,9 +22,11 @@ LTI_1P3_ROLE_MAP = {
     'staff': [
         'http://purl.imsglobal.org/vocab/lis/v2/system/person#Administrator',
         'http://purl.imsglobal.org/vocab/lis/v2/institution/person#Instructor',
+        'http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor',
     ],
     'instructor': [
         'http://purl.imsglobal.org/vocab/lis/v2/institution/person#Instructor',
+        'http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor',
     ],
     'student': [
         'http://purl.imsglobal.org/vocab/lis/v2/institution/person#Student'
