@@ -44,16 +44,25 @@ class LtiDeepLinking:
             else:
                 raise exceptions.LtiDeepLinkingContentTypeNotSupported()
 
+        accept_presentation_document_targets = [
+            "iframe",
+            "window",
+            "embed"
+        ]
+        if any(
+            target in ["iframe", "embed"]
+            for target in accept_presentation_document_targets
+        ):
+            accept_multiple = False
+        else:
+            accept_multiple = True
+
         # Consctruct Deep Linking Claim
         deep_linking_claim = {
             "accept_types": accept_types_claim,
-            "accept_presentation_document_targets": [
-                "iframe",
-                "window",
-                "embed"
-            ],
+            "accept_presentation_document_targets": accept_presentation_document_targets,
             # Accept multiple items on from Deep Linking responses.
-            "accept_multiple": True,
+            "accept_multiple": accept_multiple,
             # Automatically saves Content Items without asking to user
             "auto_create": True,
             # Other parameters
