@@ -178,7 +178,7 @@ class TestLtiConsumer1p1(unittest.TestCase):
             'oauth_signature_method': 'fake_method',
             'oauth_consumer_key': 'fake_consumer_key',
             'oauth_signature': 'fake_signature',
-            'tool_consumer_info_product_family_code': settings.PLATFORM_NAME,
+            'tool_consumer_info_product_family_code': "OpenedX",
         }
         self.assertEqual(lti_parameters, expected_lti_parameters)
 
@@ -248,7 +248,7 @@ class TestLtiConsumer1p1(unittest.TestCase):
             'oauth_signature_method': 'fake_method',
             'oauth_consumer_key': 'fake_consumer_key',
             'oauth_signature': 'fake_signature',
-            'tool_consumer_info_product_family_code': settings.PLATFORM_NAME,
+            'tool_consumer_info_product_family_code': "OpenedX",
         }
         self.assertEqual(lti_parameters, expected_lti_parameters)
 

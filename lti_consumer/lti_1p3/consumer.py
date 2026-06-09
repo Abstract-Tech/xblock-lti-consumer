@@ -362,7 +362,7 @@ class LtiConsumer1p3:
             platform_instance_claim = {
                 'guid': str(guid),
                 'name': str(settings.PLATFORM_NAME),
-                'product_family_code': str(settings.PLATFORM_NAME),
+                'product_family_code': "OpenedX",
             }
             platform_instance_claim = {
                 "https://purl.imsglobal.org/spec/lti/claim/tool_platform": platform_instance_claim
